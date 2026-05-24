@@ -163,7 +163,7 @@ function ResultPage() {
 
       {data.extracted_text && (
         <div className="text-card">
-          <h2>Extracted Resume Text</h2>
+          <h3>Extracted Resume Text</h3>
           <pre>{data.extracted_text}</pre>
         </div>
       )}
