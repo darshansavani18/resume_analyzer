@@ -1,0 +1,124 @@
+Resume Analyzer Project
+=======================
+
+Overview
+--------
+This project is a full-stack resume analysis application built with:
+- Backend: Django + Django REST Framework
+- Frontend: React + Vite
+- AI integration: OpenAI API for resume scoring and job recommendations
+- File support: PDF and DOCX resume uploads
+
+The system allows a user to upload a resume file, extracts text from the resume, analyzes it using AI, and displays a score, evaluation details, and recommended job matches.
+
+Project Structure
+-----------------
+backend/
+- config/: Django project settings, URLs, WSGI/ASGI.
+- analyzer/: Django app containing resume models, serializers, views, and AI logic.
+- db.sqlite3: Local SQLite database.
+- manage.py: Django management entry point.
+- media/resumes/: Uploaded resume files are saved here.
+
+frontend/
+- src/App.jsx: Main React app with upload and result pages.
+- src/App.css: Styling for the UI.
+- package.json, vite.config.js: Frontend configuration.
+
+How It Works
+------------
+1. Upload page
+   - User selects a PDF or DOCX file using the file input.
+   - The frontend sends the file to the backend via a multipart POST request to `/api/upload-resume/`.
+
+2. Backend receives upload
+   - `analyzer/views.py` handles the upload with Django REST Framework and `MultiPartParser`.
+   - `ResumeSerializer` validates and saves the uploaded file to disk.
+   - `extract_text_from_resume()` reads the PDF or DOCX and returns plain text.
+
+3. AI analysis
+   - `ai_resume_score()` sends the extracted text to OpenAI via `OpenAI(chat.completions)`.
+   - The prompt asks the model to score the resume on:
+     - Skills (25 pts)
+     - Projects (25 pts)
+     - Experience (20 pts)
+     - Education (10 pts)
+     - Structure/clarity (20 pts)
+   - The model returns JSON containing:
+     - overall_score
+     - skills_score
+     - projects_score
+     - experience_score
+     - education_score
+     - structure_score
+     - strengths
+     - improvements
+
+4. Job recommendations
+   - `get_job_recommendations()` uses the resume text and score to ask OpenAI for 5 relevant job positions.
+   - If the OpenAI API call fails due to an invalid or missing key, fallback logic generates a simple heuristic result so the app remains functional.
+
+5. Result page
+   - On success, the backend returns:
+     - message
+     - resume_id
+     - ai_result
+     - job_recommendations
+     - extracted_text
+   - The frontend receives this data and navigates to the result route.
+   - The result page displays:
+     - Resume score and rating
+     - Score breakdown by category
+     - Strengths and suggested improvements
+     - Recommended jobs with match percentages
+     - Extracted resume text preview
+
+Environment Setup
+-----------------
+Backend:
+1. Create and activate the Python virtual environment.
+2. Install dependencies from `requirements.txt` (if present) or manually install Django, djangorestframework, python-docx, pdfplumber, python-dotenv, openai.
+3. Create a `.env` file in `backend/` containing:
+   OPENAI_API_KEY=sk-...your-valid-key...
+4. Run Django:
+   cd backend
+   python manage.py runserver
+
+Frontend:
+1. Install npm dependencies:
+   cd frontend
+   npm install
+2. Start Vite:
+   npm run dev
+
+Key Points and Troubleshooting
+------------------------------
+- The app relies on a valid OpenAI API key. An invalid key causes a 401 error from OpenAI.
+- If the key is invalid or unavailable, the backend includes fallback scoring and recommendations so the page still works.
+- Use a real OpenAI key from https://platform.openai.com/account/api-keys.
+- The backend reads `OPENAI_API_KEY` from `backend/.env` and also supports environment variable injection.
+
+Flow Summary
+------------
+1. User uploads resume
+2. Backend saves file and extracts text
+3. AI analyzes the resume text
+4. Backend returns results and job matches
+5. Frontend shows the result page
+
+Files to Check
+--------------
+- `backend/analyzer/utils.py`: text extraction, AI prompt, fallback logic
+- `backend/analyzer/views.py`: upload API and response formatting
+- `frontend/src/App.jsx`: upload flow, navigation, and result rendering
+- `frontend/src/App.css`: UI styling
+
+How the project can work fully
+-----------------------------
+- Ensure the backend is running and reachable at `http://127.0.0.1:8000`.
+- Ensure the frontend is running and can call the backend API.
+- Upload a resume file from the browser.
+- If the OpenAI key is valid, the backend uses AI to generate real scores and recommendations.
+- If the key is invalid, fallback logic produces a basic score and job suggestions so the app still demonstrates the workflow.
+
+This project is designed as a prototype: it can be extended with real job links, better resume parsing, improved UI/UX, and stronger error handling.
