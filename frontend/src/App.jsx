@@ -207,7 +207,7 @@ function ResultPage() {
           {jobRecommendations.jobs.map((job, index) => (
             <div key={index} className="job-item">
               <div className="job-header">
-                <h3>{job.title}</h3>
+                <h2>{job.title}</h2>
                 <span className="match-badge">{job.match_percentage}% Match</span>
               </div>
               <p className="company-name">{job.company}</p>
