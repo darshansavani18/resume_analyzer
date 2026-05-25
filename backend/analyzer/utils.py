@@ -4,9 +4,24 @@ import pdfplumber
 from docx import Document
 from dotenv import load_dotenv
 from openai import OpenAI
+from PIL import Image
 
 # Load .env file from backend folder
 load_dotenv(r"C:\resume_analyzer\backend\.env")
+
+# Optional: Try to import pytesseract for image OCR support
+try:
+    import pytesseract
+    # Try to find Tesseract automatically on Windows
+    try:
+        pytesseract.pytesseract.pytesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    except:
+        # If that path doesn't exist, pytesseract will try system PATH
+        pass
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    pytesseract = None
+    PYTESSERACT_AVAILABLE = False
 
 
 def get_openai_client():
@@ -22,18 +37,56 @@ def get_openai_client():
 
 def extract_text_from_resume(file_path):
     text = ""
+    file_lower = file_path.lower()
 
-    if file_path.lower().endswith(".pdf"):
+    if file_lower.endswith(".pdf"):
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
 
-    elif file_path.lower().endswith(".docx"):
+    elif file_lower.endswith(".docx"):
         doc = Document(file_path)
         for para in doc.paragraphs:
             text += para.text + "\n"
+
+    elif file_lower.endswith((".jpg", ".jpeg", ".png")):
+        # Extract text from images using OCR
+        if not PYTESSERACT_AVAILABLE:
+            raise EnvironmentError(
+                "Image support requires Tesseract OCR to be installed. "
+                "Please install it from: https://github.com/UB-Mannheim/tesseract/wiki\n"
+                "Windows: Download tesseract-ocr-w64-setup-v5.x.x.exe\n"
+                "macOS: brew install tesseract\n"
+                "Linux: sudo apt-get install tesseract-ocr"
+            )
+        
+        try:
+            image = Image.open(file_path)
+            # Optimize image for OCR - convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert("RGB")
+            
+            text = pytesseract.image_to_string(image)
+            
+            if not text.strip():
+                raise ValueError(
+                    "No text detected in image. "
+                    "Please ensure the image is clear and readable."
+                )
+                
+        except EnvironmentError:
+            raise
+        except Exception as e:
+            error_msg = str(e)
+            if "TesseractNotFoundError" in str(type(e).__name__):
+                raise EnvironmentError(
+                    "Tesseract OCR engine is not found. "
+                    "Install it from: https://github.com/UB-Mannheim/tesseract/wiki"
+                )
+            else:
+                raise ValueError(f"Error extracting text from image: {error_msg}")
 
     return text
 

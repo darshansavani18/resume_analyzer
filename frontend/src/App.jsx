@@ -55,11 +55,11 @@ function UploadPage() {
     <div className="main-container">
       <div className="upload-card">
         <h1>Resume Analyzer</h1>
-        <p>Upload your resume PDF or DOCX file</p>
+        <p>Upload your resume (PDF, DOCX, PNG, JPG, or JPEG)</p>
 
         <input
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
           onChange={handleFileChange}
         />
 
