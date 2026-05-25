@@ -242,3 +242,236 @@ def get_job_recommendations_fallback(resume_text, score):
         })
 
     return {"jobs": jobs, "fallback_used": True}
+
+
+def ai_resume_score_all_fields(resume_text):
+    """
+    Analyze resume and provide scores for ALL career fields.
+    """
+    prompt = f"""
+You are an expert resume analyzer specializing in multiple career fields.
+
+Analyze this resume and provide a score out of 100 for EACH of these career fields:
+1. IT/Software Development
+2. Data Science & Analytics
+3. Business & Management
+4. Sales & Business Development
+5. Marketing & Communications
+6. Finance & Accounting
+7. Human Resources
+8. Project Management
+9. Design & UX
+10. Consulting
+
+For each field, evaluate based on:
+- Relevant Skills (25%)
+- Relevant Projects/Experience (25%)
+- Work Experience (20%)
+- Education (15%)
+- Overall Resume Quality (15%)
+
+Return ONLY valid JSON. No markdown. No explanation.
+
+JSON format:
+{{
+  "field_scores": {{
+    "IT/Software Development": {{
+      "score": 85,
+      "strengths": ["Python", "React", "SQL"],
+      "gaps": ["Cloud platforms"]
+    }},
+    "Data Science & Analytics": {{
+      "score": 72,
+      "strengths": ["SQL", "Data analysis"],
+      "gaps": ["Machine Learning"]
+    }},
+    "Business & Management": {{
+      "score": 55,
+      "strengths": ["Experience"],
+      "gaps": ["Leadership examples"]
+    }},
+    "Sales & Business Development": {{
+      "score": 48,
+      "strengths": [],
+      "gaps": ["Sales metrics", "Client management"]
+    }},
+    "Marketing & Communications": {{
+      "score": 50,
+      "strengths": ["Writing skills"],
+      "gaps": ["Marketing tools", "Campaign examples"]
+    }},
+    "Finance & Accounting": {{
+      "score": 42,
+      "strengths": [],
+      "gaps": ["Financial knowledge", "Accounting software"]
+    }},
+    "Human Resources": {{
+      "score": 58,
+      "strengths": ["Communication"],
+      "gaps": ["HR specific tools"]
+    }},
+    "Project Management": {{
+      "score": 65,
+      "strengths": ["Experience"],
+      "gaps": ["PM certifications"]
+    }},
+    "Design & UX": {{
+      "score": 35,
+      "strengths": [],
+      "gaps": ["Design tools", "Portfolio"]
+    }},
+    "Consulting": {{
+      "score": 62,
+      "strengths": ["Problem solving"],
+      "gaps": ["Consulting background"]
+    }}
+  }},
+  "best_fit_fields": ["IT/Software Development", "Data Science & Analytics", "Project Management"],
+  "overall_versatility_score": 75
+}}
+
+Resume text:
+{resume_text}
+"""
+
+    try:
+        client = get_openai_client()
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a professional resume analyzer with expertise in multiple career fields. Return only valid JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.2
+        )
+
+        result = response.choices[0].message.content.strip()
+        result = result.replace("```json", "").replace("```", "").strip()
+
+        return json.loads(result)
+    except Exception as exc:
+        print("OpenAI API unavailable or invalid key. Using fallback multi-field analyzer.", exc)
+        return ai_resume_score_all_fields_fallback(resume_text)
+
+
+def ai_resume_score_all_fields_fallback(resume_text):
+    """
+    Fallback function to score resume across all career fields.
+    """
+    text = resume_text.lower()
+
+    # Define keywords for each field
+    field_keywords = {
+        "IT/Software Development": {
+            "keywords": ["python", "java", "javascript", "react", "node", "sql", "git", "api", "developer", "software", "code", "programming"],
+            "boost": 15
+        },
+        "Data Science & Analytics": {
+            "keywords": ["python", "sql", "data", "analysis", "analytics", "tableau", "power bi", "machine learning", "ml", "statistics", "pandas"],
+            "boost": 10
+        },
+        "Business & Management": {
+            "keywords": ["management", "manager", "business", "strategic", "operations", "leadership", "lead", "team"],
+            "boost": 8
+        },
+        "Sales & Business Development": {
+            "keywords": ["sales", "business development", "crm", "salesforce", "revenue", "client", "account", "pipeline"],
+            "boost": 7
+        },
+        "Marketing & Communications": {
+            "keywords": ["marketing", "content", "seo", "social media", "brand", "campaign", "communication", "copywriting"],
+            "boost": 7
+        },
+        "Finance & Accounting": {
+            "keywords": ["finance", "accounting", "financial", "cpa", "audit", "budgeting", "excel", "quickbooks", "sap"],
+            "boost": 8
+        },
+        "Human Resources": {
+            "keywords": ["hr", "human resources", "recruitment", "talent", "onboarding", "employee", "benefits", "hris"],
+            "boost": 7
+        },
+        "Project Management": {
+            "keywords": ["project management", "pm", "agile", "scrum", "jira", "pmp", "waterfall", "stakeholder"],
+            "boost": 8
+        },
+        "Design & UX": {
+            "keywords": ["design", "ux", "ui", "figma", "photoshop", "adobe", "prototype", "wireframe", "css"],
+            "boost": 8
+        },
+        "Consulting": {
+            "keywords": ["consulting", "consultant", "strategy", "advisory", "client", "problem solving", "business case"],
+            "boost": 7
+        }
+    }
+
+    # Base score components
+    has_experience = any(word in text for word in ["year", "years", "experience"])
+    has_education = any(term in text for term in ["bachelor", "master", "phd", "degree"])
+    has_projects = any(word in text for word in ["project", "github", "portfolio"])
+
+    experience_score = 20 if has_experience else 10
+    education_score = 15 if has_education else 5
+    projects_score = 15 if has_projects else 5
+    quality_score = 15 if len(text.split()) > 300 else 8
+
+    field_scores = {}
+    best_fit_fields = []
+
+    for field, data in field_keywords.items():
+        # Count keyword matches
+        keyword_count = sum(1 for keyword in data["keywords"] if keyword in text)
+        skills_score = min(25, keyword_count * 3)
+
+        # Calculate total score
+        total_score = skills_score + projects_score + experience_score + education_score + quality_score
+        total_score = min(100, total_score)
+
+        # Boost score for best matches
+        if keyword_count >= 3:
+            total_score = min(100, total_score + data["boost"])
+            best_fit_fields.append(field)
+
+        strengths = []
+        gaps = []
+
+        if keyword_count >= 2:
+            strengths.append(f"Strong {field.lower()} fundamentals")
+        if has_experience:
+            strengths.append("Professional experience")
+        if has_projects:
+            strengths.append("Project portfolio")
+
+        if keyword_count < 2:
+            gaps.append(f"Limited {field.lower()} specific skills")
+        if not has_projects:
+            gaps.append("No projects mentioned")
+        if not has_education:
+            gaps.append("No formal education listed")
+
+        field_scores[field] = {
+            "score": total_score,
+            "strengths": strengths[:2],
+            "gaps": gaps[:2]
+        }
+
+    # Sort and get best fit fields
+    sorted_fields = sorted(field_scores.items(), key=lambda x: x[1]["score"], reverse=True)
+    best_fit_fields = [field for field, _ in sorted_fields[:3]]
+
+    # Calculate versatility score
+    avg_score = sum(score["score"] for score in field_scores.values()) / len(field_scores)
+    versatility_score = int(avg_score)
+
+    return {
+        "field_scores": {field: score for field, score in field_scores.items()},
+        "best_fit_fields": best_fit_fields,
+        "overall_versatility_score": versatility_score,
+        "fallback_used": True
+    }

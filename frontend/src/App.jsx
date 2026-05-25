@@ -89,6 +89,7 @@ function ResultPage() {
   }
 
   const aiResult = data.ai_result;
+  const fieldAnalysis = data.field_analysis;
   const score = aiResult.overall_score;
   const jobRecommendations = data.job_recommendations;
 
@@ -132,7 +133,71 @@ function ResultPage() {
             <li key={index}>{item}</li>
           ))}
         </ul>
+      </div>
 
+      {fieldAnalysis && fieldAnalysis.field_scores && (
+        <div className="field-scores-card">
+          <h2>Resume Fit by Career Field</h2>
+          <p className="versatility-score">
+            Overall Versatility Score: {fieldAnalysis.overall_versatility_score}/100
+          </p>
+
+          {fieldAnalysis.best_fit_fields && fieldAnalysis.best_fit_fields.length > 0 && (
+            <div className="best-fit-section">
+              <h3>Best Fit Fields</h3>
+              <div className="best-fit-tags">
+                {fieldAnalysis.best_fit_fields.map((field, index) => (
+                  <span key={index} className="best-fit-badge">{field}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="field-scores-grid">
+            {Object.entries(fieldAnalysis.field_scores).map(([field, data], index) => (
+              <div key={index} className="field-score-item">
+                <div className="field-header">
+                  <h4>{field}</h4>
+                  <span className={`field-score ${data.score >= 70 ? "high" : data.score >= 50 ? "medium" : "low"}`}>
+                    {data.score}
+                  </span>
+                </div>
+                
+                <div className="field-progress-bar">
+                  <div 
+                    className="field-progress-fill" 
+                    style={{width: `${data.score}%`}}
+                  ></div>
+                </div>
+
+                {data.strengths && data.strengths.length > 0 && (
+                  <div className="field-strengths">
+                    <strong>Strengths:</strong>
+                    <ul>
+                      {data.strengths.map((strength, idx) => (
+                        <li key={idx}>{strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {data.gaps && data.gaps.length > 0 && (
+                  <div className="field-gaps">
+                    <strong>Gaps:</strong>
+                    <ul>
+                      {data.gaps.map((gap, idx) => (
+                        <li key={idx}>{gap}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="details-card">
         <button onClick={() => navigate("/")}>Upload Another Resume</button>
       </div>
 
